@@ -11,6 +11,22 @@ function interceptActionWithTarget(actionSelector, target) {
         }})
 }
 
+function interceptUIAction(uiAction) {
+    // At least in swift 5.5 next scheme work
+    // block invoke points to swift helper that calls blockAdr+0x20
+    var blockAddr = uiAction.$ivars._handler.handle
+    var closurePtr = blockAddr.add(0x20).readPointer()
+    var closureName = DebugSymbol.fromAddress(closurePtr).name 
+    console.log("\tSet hook on: " + closureName)
+    Interceptor.attach(closurePtr, {
+        onEnter: function(a) {
+            this.log = []
+            this.log.push("Called " + closureName)
+        },
+        onLeave: function(r) {
+            console.log(this.log.join('\n') + '\n')
+        }})
+}
 
 function setInteceptionRegistredActions(uiControl) {
     console.log("Get callbacks of " + uiControl.$className + " " + uiControl.handle)
@@ -27,6 +43,7 @@ function setInteceptionRegistredActions(uiControl) {
         // First case when UIAction specified
         if (action.$ivars._actionHandler != null) {
             var uiAction = action.$ivars._actionHandler
+            interceptUIAction(uiAction)
         } else if (action.$ivars._action != null && 
                     action.$ivars._action != "0x0" &&
                     action.$ivars._target != null) {

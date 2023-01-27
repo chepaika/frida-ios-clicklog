@@ -1,14 +1,29 @@
 function interceptActionWithTarget(actionSelector, target) {
-    console.log("\tSet hook on: " + target.$className + "." + actionSelector.readCString() + "()")
+    console.log("\tSet hook on: " + target.$className + "." + actionSelector.readUtf8String() + "()")
     var impl = target.methodForSelector_(actionSelector)
     Interceptor.attach(impl, {
         onEnter: function(a) {
             this.log = []
-            this.log.push("Called " + target.$className + "." + actionSelector.readCString() + "()")
+            this.log.push("(" + a[0] + ") " + target.$className + "." + actionSelector.readUtf8String() + "()")
         },
         onLeave: function(r) {
             console.log(this.log.join('\n') + '\n')
         }})
+}
+
+function interceptActionWithoutTarget(actionSelector, uiControl) {
+    var uiApp = ObjC.classes.UIApplication.sharedApplication()
+    // frida bug? anyway we can't call this 
+    // var actionTarget = uiApp._targetInChainForAction_sender_(actionSelector, uiControl)
+    // but we can 
+    var targetInChainForActionPrototype = new NativeFunction(ObjC.api.objc_msgSend, "pointer", ["pointer","pointer","pointer", "pointer"])
+    var actionTargetPtr = targetInChainForActionPrototype(uiApp, ObjC.selector("_targetInChainForAction:sender:"), actionSelector, uiControl)
+    var actionTarget = new ObjC.Object(actionTargetPtr) 
+    if (actionTarget != null) {
+        interceptActionWithTarget(actionSelector, actionTarget)
+    } else {
+        console.warn("Can't get target for selector: " + actionSelector.readUtf8String())
+    }
 }
 
 function interceptUIAction(uiAction) {
@@ -28,7 +43,7 @@ function interceptUIAction(uiAction) {
         }})
 }
 
-function setInteceptionRegistredActions(uiControl) {
+function setInteceptionOnRegistredCallbacks(uiControl) {
     console.log("Get callbacks of " + uiControl.$className + " " + uiControl.handle)
     var targetActions = uiControl.$ivars._targetActions
     if (targetActions == null) {
@@ -54,18 +69,7 @@ function setInteceptionRegistredActions(uiControl) {
         else if (action.$ivars._action != null && 
             action.$ivars._action != "0x0"){
             var actionSelector = action.$ivars._action
-            var uiApp = ObjC.classes.UIApplication.sharedApplication()
-            // frida bug? anyway we can't call this 
-            // var actionTarget = uiApp._targetInChainForAction_sender_(actionSelector, uiControl)
-            // but we can 
-            var targetInChainForActionPrototype = new NativeFunction(ObjC.api.objc_msgSend, "pointer", ["pointer","pointer","pointer", "pointer"])
-            var actionTargetPtr = targetInChainForActionPrototype(uiApp, ObjC.selector("_targetInChainForAction:sender:"), actionSelector, uiControl)
-            var actionTarget = new ObjC.Object(actionTargetPtr) 
-            if (actionTarget != null) {
-                interceptActionWithTarget(actionSelector, actionTarget)
-            } else {
-                console.warn("Can't get target for selector: " + actionSelector.readCString())
-            }
+            interceptActionWithoutTarget(actionSelector, uiControl)
         }
         else {
             console.error("Invalid UIControlTargetAction with actionHandler and action seted to null")
@@ -77,5 +81,5 @@ function setInteceptionRegistredActions(uiControl) {
 function hookAllUIControlsAction() {
     console.log("Getting all UIControl's")
     uiControls = ObjC.chooseSync(ObjC.classes.UIControl)
-    uiControls.forEach(control => {setInteceptionRegistredActions(control)})
+    uiControls.forEach(control => {setInteceptionOnRegistredCallbacks(control)})
 }

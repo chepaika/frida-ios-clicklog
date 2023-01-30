@@ -3,7 +3,7 @@ function interceptActionWithTarget(actionSelector, target) {
     var impl = target.methodForSelector_(actionSelector)
     Interceptor.attach(impl, {
         onEnter: function(a) {
-            this.log = []
+            this.log = Array()
             this.log.push("(" + a[0] + ") " + target.$className + "." + actionSelector.readUtf8String() + "()")
         },
         onLeave: function(r) {
@@ -35,7 +35,7 @@ function interceptUIAction(uiAction) {
     console.log("\tSet hook on: " + closureName)
     Interceptor.attach(closurePtr, {
         onEnter: function(a) {
-            this.log = []
+            this.log = Array()
             this.log.push("Called " + closureName)
         },
         onLeave: function(r) {
@@ -80,6 +80,6 @@ function setInteceptionOnRegistredCallbacks(uiControl) {
 
 function hookAllUIControlsAction() {
     console.log("Getting all UIControl's")
-    uiControls = ObjC.chooseSync(ObjC.classes.UIControl)
+    var uiControls = ObjC.chooseSync(ObjC.classes.UIControl)
     uiControls.forEach(control => {setInteceptionOnRegistredCallbacks(control)})
 }

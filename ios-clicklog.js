@@ -18,11 +18,11 @@ function interceptActionWithoutTarget(actionSelector, uiControl) {
     // but we can 
     var targetInChainForActionPrototype = new NativeFunction(ObjC.api.objc_msgSend, "pointer", ["pointer","pointer","pointer", "pointer"])
     var actionTargetPtr = targetInChainForActionPrototype(uiApp, ObjC.selector("_targetInChainForAction:sender:"), actionSelector, uiControl)
-    var actionTarget = new ObjC.Object(actionTargetPtr) 
-    if (actionTarget != null) {
+    if (actionTargetPtr != "0x0") {
+        var actionTarget = new ObjC.Object(actionTargetPtr) 
         interceptActionWithTarget(actionSelector, actionTarget)
     } else {
-        console.warn("Can't get target for selector: " + actionSelector.readUtf8String())
+        console.warn("\tCan't get target for selector: " + actionSelector.readUtf8String())
     }
 }
 
